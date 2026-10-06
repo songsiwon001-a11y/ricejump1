@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>rice jump!</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;800;900&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+    
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: #05070f;
+      color: #f1f5f9;
+      user-select: none;
+      overflow-x: hidden;
+    }
+    .font-game {
+      font-family: 'Press Start 2P', cursive;
+    }
+    .font-digital {
+      font-family: 'Orbitron', sans-serif;
+    }
+    #gameCanvas {
+      box-shadow: 0 0 30px rgba(14, 165, 233, 0.15);
+      border: 3px solid #1e293b;
+      background: #0b0f19;
+      transition: background 1.5s ease;
+    }
+    .rainbow-text {
+      background: linear-gradient(to right, #ef4444, #f59e0b, #10b981, #3b82f6, #8b5cf6, #ec4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: rainbow-scroll 3s linear infinite;
+    }
+    @keyframes rainbow-scroll {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .touch-none {
+      touch-action: none;
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen items-center justify-between p-4 md:p-6">
+
+  <header class="w-full max-w-4xl flex flex-col sm:flex-row justify-between items-center gap-4 mb-3">
+    <div class="flex items-center gap-3">
+      <div class="p-2 bg-sky-950/40 rounded-xl border border-sky-500/30 animate-pulse">
+        <i data-lucide="music-4" class="w-7 h-7 text-sky-400"></i>
+      </div>
+      <div>
+        <h1 class="text-3xl font-extrabold font-digital tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-400">
+          RICE JUMP! <span class="text-xs font-semibold px-2 py-0.5 bg-sky-600/30 border border-sky-500 text-sky-300 rounded ml-1 animate-pulse">v1.5</span>
+        </h1>
+        <p class="text-xs text-slate-400 font-medium">대기 시간 15초 뒤 시작되는 AI 데모 쇼!</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button id="soundToggle" class="px-3 py-2 bg-sky-950/40 border border-sky-500/30 text-sky-200 rounded-lg flex items-center gap-1.5 transition text-xs">
+        <i data-lucide="volume-2" id="soundIcon" class="w-4 h-4 text-sky-400"></i>
+        <span>소리 켬</span>
+      </button>
+      <button id="helpBtn" class="px-3 py-2 bg-slate-800/80 hover:bg-slate-700 text-slate-200 rounded-lg flex items-center gap-1.5 transition text-xs border border-slate-700">
+        <i data-lucide="help-circle" class="w-4 h-4 text-amber-400"></i>
+        <span>게임 방법</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="w-full max-w-4xl flex flex-col lg:flex-row gap-6 items-center justify-center">
+    
+    <div class="relative flex flex-col items-center">
+      <div class="w-full flex justify-between items-center mb-2 px-1 text-sm font-semibold">
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-1.5">
+            <span class="text-slate-400">STAGE:</span>
+            <span id="stageVal" class="text-xl font-digital text-amber-400">1</span>
+            <span id="worldThemeName" class="text-xs text-slate-500 font-normal">(지상)</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="text-slate-400">SCORE:</span>
+            <span id="scoreVal" class="text-xl font-digital text-cyan-400">0000</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="text-slate-400">LIVES:</span>
+            <span id="livesContainer" class="flex items-center gap-0.5 text-red-500 text-lg">
+              ❤️ ❤️ ❤️️
+            </span>
+          </div>
+        </div>
+        
+        <div class="flex items-center gap-2">
+          <div id="demoBadge" class="hidden items-center gap-1.5 px-3 py-0.5 bg-yellow-500 border border-yellow-400 text-slate-950 rounded text-xs font-black animate-pulse">
+            <span>🎮 DEMO PLAY</span>
+          </div>
+          <div id="recordingBadge" class="hidden items-center gap-1.5 px-2 py-0.5 bg-red-600 border border-red-500 text-white rounded text-xs font-semibold animate-pulse">
+            <span class="w-2 h-2 rounded-full bg-white inline-block"></span>
+            <span id="recTypeLabel">REC (1:00)</span>
+          </div>
+          <div id="cheatIndicator" class="hidden px-2.5 py-0.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded text-xs font-game animate-bounce">
+            ⚡ DUJONKU ⚡
+          </div>
+        </div>
+      </div>
+
+      <div class="relative rounded-2xl overflow-hidden">
+        <canvas id="gameCanvas" width="800" height="400" class="w-full max-w-full block bg-slate-950"></canvas>
+        
+        <div id="overlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center transition-all duration-300">
+          <div id="overlayContent" class="max-w-md">
+            <h2 id="overlayTitle" class="text-4xl font-black mb-2 text-yellow-400 tracking-wider">RICE JUMP!</h2>
+            <p id="overlayDesc" class="text-slate-300 text-sm mb-6 leading-relaxed">
+              점프하여 모기를 피하고 쌀알(RICE)과 맛있는 두쫀쿠 쿠키를 획득하세요!<br>
+              <span class="text-red-400 font-bold">⚠️ 경고: 맵 곳곳에 무작위로 배치된 빨간 "자폭" 장치를 건드리면 "딸깍" 소리와 함께 폭발합니다!</span>
+            </p>
+            
+            <button id="startBtn" class="px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-xl shadow-lg shadow-cyan-500/20 hover:shadow-cyan-400/30 transform hover:-translate-y-0.5 transition duration-150 text-lg w-full max-w-xs">
+              게임 시작!
+            </button>
+            <p id="demoCountdown" class="text-slate-500 text-[11px] mt-4 font-digital">15초 동안 대기 시 오토 데모 비디오가 실행됩니다...</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="w-full grid grid-cols-2 gap-3 mt-4 lg:hidden">
+        <button id="btnLeft" class="touch-none h-16 bg-slate-800 active:bg-slate-700 border border-slate-700 rounded-xl flex flex-col items-center justify-center text-slate-300 font-bold">
+          <i data-lucide="arrow-left" class="w-6 h-6"></i>
+          <span class="text-[10px]">왼쪽 이동</span>
+        </button>
+        <button id="btnRight" class="touch-none h-16 bg-slate-800 active:bg-slate-700 border border-slate-700 rounded-xl flex flex-col items-center justify-center text-slate-300 font-bold">
+          <i data-lucide="arrow-right" class="w-6 h-6"></i>
+          <span class="text-[10px]">오른쪽 이동</span>
+        </button>
+        <button id="btnJump" class="touch-none col-span-2 h-20 bg-gradient-to-r from-cyan-600 to-blue-600 active:from-cyan-500 active:to-blue-500 border border-cyan-500 rounded-xl flex flex-col items-center justify-center text-white font-black text-lg shadow-lg">
+          <i data-lucide="arrow-up" class="w-8 h-8"></i>
+          <span>JUMP!</span>
+        </button>
+      </div>
+    </div>
+
+    <aside class="hidden md:flex flex-col gap-4 w-full lg:w-72 self-stretch">
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex-1">
+        <h3 class="text-sm font-bold text-slate-300 mb-3 flex items-center gap-1.5 border-b border-slate-800 pb-2">
+          <i data-lucide="info" class="w-4 h-4 text-cyan-400"></i>
+          오디오 정보
+        </h3>
+        <ul class="space-y-3.5 text-xs text-slate-400">
+          <li class="flex items-start gap-2">
+            <span class="text-emerald-400 mt-0.5">🌱</span>
+            <span><strong>지상 (STAGE 1 ~ 7):</strong><br>명랑하고 따뜻한 BGM.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-red-400 mt-0.5">🌋</span>
+            <span><strong>지하 (STAGE 8 ~ 14):</strong><br>긴장감을 조여오는 딥 베이스.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-cyan-400 mt-0.5">🌊</span>
+            <span><strong>물 속 (STAGE 15 ~ 22):</strong><br>부드러운 화음 필터 사운드.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-purple-400 mt-0.5">🌌</span>
+            <span><strong>하늘 (STAGE 23 ~ 29):</strong><br>초고속 아르페지오 사운드 BGM.</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-amber-400 mt-0.5">👑</span>
+            <span><strong>클리어 (STAGE 30):</strong><br>감동적인 엔딩 곡.</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col items-center text-center justify-center">
+        <span class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-1">최고 기록</span>
+        <div id="highScoreVal" class="text-3xl font-digital font-black text-amber-400">0000</div>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="w-full max-w-4xl text-center text-[11px] text-slate-600 mt-6 border-t border-slate-950 pt-4">
+    <p>Copyright 2026 super rice jamjam studio. All rights reserved.</p>
+  </footer>
+
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2.5 bg-slate-900 border border-cyan-500/30 text-cyan-200 rounded-xl text-xs flex items-center gap-2 shadow-2xl opacity-0 translate-y-4 pointer-events-none transition-all duration-300 z-50">
+    <i data-lucide="bell" class="w-4 h-4 text-cyan-400"></i>
+    <span id="toastMsg">사운드가 연동되었습니다.</span>
+  </div>
+
+  <div id="helpModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-6 relative">
+      <button id="closeHelpBtn" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      <h3 class="text-xl font-bold text-amber-400 mb-4 flex items-center gap-2">
+        <i data-lucide="help-circle"></i>
+        게임 가이드
+      </h3>
+      <div class="space-y-4 text-xs text-slate-300 leading-relaxed">
+        <p><strong>🍚 Rice Jump!</strong><br>위협적인 모기들과 숨은 자폭 장치를 피해 쌀알을 수집하세요!</p>
+        <p><strong>🚨 비동기 자폭 위협:</strong><br>원형 자폭 버튼은 밟는 순간 폭발을 일으키니 발걸음을 주시해야 합니다.</p>
+      </div>
+      <button id="closeHelpBtn2" class="mt-6 w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-bold text-xs transition">
+        확인했습니다
+      </button>
+    </div>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    let audioCtx = null;
+    let isSoundOn = true;
+    let bgmInterval = null;
+    let recordAudioDestination = null;
+
+    let bassToneBuffer = null;
+    let manePulseBuffer = null;
+    let shortNoiseBuffer = null;
+    let pulse6Buffer = null;
+    let pulse25Buffer = null;
+    let pulse50Buffer = null;
+    let whiteNoiseBuffer = null;
+
+    const noteFreqs = { 
+      "A2": 110.0, "G2": 98.0, "E2": 82.41, "C2": 65.41, 
+      "D2": 73.42, "C3": 130.81, "B2": 123.47, "F2": 87.31,
+      "C5": 523.25, "D5": 587.33, "E5": 659.25, "G5": 783.99, "A5": 880.0
+    };
+
+    async function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        recordAudioDestination = audioCtx.createMediaStreamAudioDestination();
+        await loadAudioBuffers();
+      }
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+      }
+    }
+
+    async function loadAudioBuffers() {
+      const loadBuf = async (url) => {
+        try {
+          const resp = await fetch(url);
+          const buf = await resp.arrayBuffer();
+          return await audioCtx.decodeAudioData(buf);
+        } catch(e) { return null; }
+      };
+
+      bassToneBuffer = await loadBuf('bass_tone.wav');
+      manePulseBuffer = await loadBuf('mane_pulse.wav');
+      shortNoiseBuffer = await loadBuf('short_noise.wav');
+      pulse6Buffer = await loadBuf('pulse_6.25.wav');
+      pulse25Buffer = await loadBuf('pulse_25.wav');
+      pulse50Buffer = await loadBuf('pulse_50.wav');
+      whiteNoiseBuffer = await loadBuf('whitenoise.wav');
+    }
+
+    function playCustomSample(buffer, baseHz, targetHz, maxDuration, volume = 0.5) {
+      if (!buffer || !audioCtx || !isSoundOn) return;
+      try {
+        const source = audioCtx.createBufferSource();
+        source.buffer = buffer;
+        const playbackRate = Math.max(0.05, targetHz / baseHz);
+        source.playbackRate.value = playbackRate;
+
+        const duration = Math.min((buffer.duration / playbackRate), maxDuration);
+        const gainNode = audioCtx.createGain();
+        gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+        source.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        if (recordAudioDestination) gainNode.connect(recordAudioDestination);
+
+        source.start(audioCtx.currentTime);
+        source.stop(audioCtx.currentTime + duration);
+      } catch(e) {}
+    }
+
+    const Sound = {
+      jump: () => {
+        playCustomSample(pulse50Buffer, 80.0, 320.0, 0.12, 0.4);
+      },
+      eatRice: () => {
+        playCustomSample(pulse6Buffer, 10.0, 400.0, 0.15, 0.6);
+      },
+      eatDujonku: () => {
+        playCustomSample(manePulseBuffer, 26.0, 600.0, 0.3, 0.6);
+      },
+      clickSwitch: () => {
+        playCustomSample(pulse25Buffer, 11.5, 500.0, 0.05, 0.5);
+      },
+      beepSignal: () => {
+        playCustomSample(pulse6Buffer, 10.0, 800.0, 0.1, 0.5);
+      },
+      hit: () => {
+        playCustomSample(whiteNoiseBuffer, 1.0, 15.0, 0.2, 0.7);
+      },
+      mosquito: () => {
+        playCustomSample(shortNoiseBuffer, 3.0, 350.0, 0.08, 0.4);
+      },
+      selfDestruct: () => {
+        if (!whiteNoiseBuffer || !audioCtx) return;
+        try {
+          const now = audioCtx.currentTime;
+          const boomSource = audioCtx.createBufferSource();
+          boomSource.buffer = whiteNoiseBuffer;
+          boomSource.playbackRate.setValueAtTime(2.0, now);
+          boomSource.playbackRate.linearRampToValueAtTime(0.5, now + 0.8);
+          const boomGain = audioCtx.createGain();
+          boomGain.gain.setValueAtTime(1.0, now);
+          boomGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+          boomSource.connect(boomGain);
+          boomSource.connect(audioCtx.destination);
+          if (recordAudioDestination) boomGain.connect(recordAudioDestination);
+          boomSource.start(now);
+          boomSource.stop(now + 0.8);
+        } catch(e) {}
+      }
+    };
+
+    const spaceBassSeq = ["A2", "E2", "C2", "G2", "F2", "C2", "D2", "E2"];
+    const spaceManeSeq = ["E5", null, "A5", "C5", "G5", null, "E5", "A5"];
+    let spaceStep = 0;
+
+    function startBgm() {
+      if (bgmInterval) clearInterval(bgmInterval);
+      
+      const intervalMs = (60 / 135) * 1000 * 0.5;
+      bgmInterval = setInterval(() => {
+        if (!isSoundOn || (!gameActive && !isDemoMode)) return;
+
+        const idx = spaceStep % spaceBassSeq.length;
+        const bNote = spaceBassSeq[idx];
+        playCustomSample(bassToneBuffer, 12.5, noteFreqs[bNote] || 82.41, 0.25, 0.5);
+
+        const mNote = spaceManeSeq[idx];
+        if (mNote) {
+          playCustomSample(manePulseBuffer, 26.0, noteFreqs[mNote] || 659.25, 0.15, 0.3);
+        }
+
+        spaceStep++;
+      }, intervalMs);
+    }
+
+    function stopBgm() {
+      if (bgmInterval) {
+        clearInterval(bgmInterval);
+        bgmInterval = null;
+      }
+    }
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const scoreVal = document.getElementById('scoreVal');
+    const stageVal = document.getElementById('stageVal');
+    const worldThemeName = document.getElementById('worldThemeName');
+    const livesContainer = document.getElementById('livesContainer');
+    const cheatIndicator = document.getElementById('cheatIndicator');
+    const highScoreVal = document.getElementById('highScoreVal');
+    const overlay = document.getElementById('overlay');
+    const overlayTitle = document.getElementById('overlayTitle');
+    const overlayDesc = document.getElementById('overlayDesc');
+    const startBtn = document.getElementById('startBtn');
+    
+    const recordingBadge = document.getElementById('recordingBadge');
+    const recTypeLabel = document.getElementById('recTypeLabel');
+    const demoBadge = document.getElementById('demoBadge');
+    const demoCountdown = document.getElementById('demoCountdown');
+
+    let gameActive = false;
+    let score = 0;
+    let currentStage = 1;
+    let highScore = parseInt(localStorage.getItem('rice_jump_high') || '0', 10);
+    highScoreVal.textContent = String(highScore).padStart(4, '0');
+
+    let lives = 3;
+    let isInfiniteLives = false;
+    let shakeDuration = 0; 
+
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let isRecording = false;
+    let recordTimer = 0;
+    let recordInterval = null;
+
+    let demoTriggerTimer = null; 
+    let isDemoMode = false;      
+    let demoLimitTimer = null;   
+
+    function resetInactivityTimer() {
+      if (gameActive || isDemoMode) return;
+      
+      let countdownSec = 15;
+      demoCountdown.textContent = `${countdownSec}초 동안 대기 시 오토 데모 비디오가 실행됩니다...`;
+
+      if (demoTriggerTimer) clearInterval(demoTriggerTimer);
+      demoTriggerTimer = setInterval(() => {
+        countdownSec--;
+        demoCountdown.textContent = `${countdownSec}초 동안 대기 시 오토 데모 비디오가 실행됩니다...`;
+        
+        if (countdownSec <= 0) {
+          clearInterval(demoTriggerTimer);
+          startDemoPlay();
+        }
+      }, 1000);
+    }
+
+    const player = {
+      x: 100,
+      y: 300,
+      width: 28,
+      height: 38,
+      vx: 0,
+      vy: 0,
+      speed: 4.8,
+      gravity: 0.5,
+      jumpForce: -11.5,
+      isGrounded: false,
+      facing: 'right',
+      invincibilityFrames: 0,
+      
+      reset() {
+        this.x = 100;
+        this.y = 300;
+        this.vx = 0;
+        this.vy = 0;
+        this.isGrounded = false;
+        this.invincibilityFrames = 0;
+      },
+
+      jump() {
+        if (this.isGrounded) {
+          this.vy = this.jumpForce;
+          this.isGrounded = false;
+          Sound.jump();
+        }
+      },
+
+      update() {
+        this.vy += this.gravity;
+        this.x += this.vx;
+        this.y += this.vy;
+
+        if (this.x < 0) this.x = 0;
+        if (this.x + this.width > canvas.width) this.x = canvas.width - this.width;
+
+        const groundY = 340;
+        if (this.y + this.height >= groundY) {
+          this.y = groundY - this.height;
+          this.vy = 0;
+          this.isGrounded = true;
+        }
+
+        if (this.invincibilityFrames > 0) {
+          this.invincibilityFrames--;
+        }
+      },
+
+      draw() {
+        if (this.invincibilityFrames > 0 && Math.floor(this.invincibilityFrames / 5) % 2 === 0) {
+          return;
+        }
+
+        ctx.save();
+        if (isInfiniteLives) {
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = '#e9d5ff';
+        }
+
+        ctx.fillStyle = isInfiniteLives ? '#f472b6' : '#22d3ee';
+        ctx.beginPath();
+        ctx.roundRect(this.x, this.y, this.width, this.height, 8);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(this.x, this.y + 6, this.width, 6);
+
+        ctx.fillStyle = '#0f172a';
+        if (this.facing === 'right') {
+          ctx.fillRect(this.x + 18, this.y + 12, 4, 6);
+          ctx.fillRect(this.x + 10, this.y + 12, 4, 6);
+        } else {
+          ctx.fillRect(this.x + 6, this.y + 12, 4, 6);
+          ctx.fillRect(this.x + 14, this.y + 12, 4, 6);
+        }
+
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(this.facing === 'right' ? this.x + 22 : this.x + 2, this.y + 18, 4, 2);
+
+        ctx.restore();
+      }
+    };
+
+    class HiddenSelfDestructButton {
+      constructor() {
+        this.radius = 20 + Math.random() * 12;
+        this.x = canvas.width + 50 + Math.random() * 300;
+        this.y = 340 - this.radius;
+        this.pulse = Math.random() * Math.PI;
+        this.speed = 2.0 + Math.random() * 1.5;
+        this.clicked = false;
+      }
+
+      update() {
+        this.x -= this.speed;
+        this.pulse += 0.05;
+      }
+
+      draw() {
+        ctx.save();
+        const activeRadius = this.radius + Math.sin(this.pulse) * 3;
+
+        ctx.strokeStyle = `rgba(239, 68, 68, ${0.4 + Math.sin(this.pulse) * 0.3})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, activeRadius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = '#475569';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#b91c1c';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius - 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 8px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('⚠️', this.x, this.y);
+
+        ctx.restore();
+      }
+
+      checkCollision(playerObj) {
+        const closestX = Math.max(playerObj.x, Math.min(this.x, playerObj.x + playerObj.width));
+        const closestY = Math.max(playerObj.y, Math.min(this.y, playerObj.y + playerObj.height));
+        const distSecX = this.x - closestX;
+        const distSecY = this.y - closestY;
+        return (distSecX * distSecX + distSecY * distSecY) < (this.radius * this.radius);
+      }
+    }
+
+    class Mosquito {
+      constructor() {
+        this.width = 22;
+        this.height = 22;
+        this.x = canvas.width + Math.random() * 80;
+        this.y = 100 + Math.random() * 200;
+        this.speed = 4 + Math.random() * 3;
+        this.angle = Math.random() * Math.PI;
+      }
+
+      update() {
+        this.x -= this.speed;
+        this.angle += 0.06;
+        this.y += Math.sin(this.angle) * 1.5;
+        
+        if (Math.random() < 0.02) {
+          Sound.mosquito();
+        }
+      }
+
+      draw() {
+        ctx.save();
+        ctx.fillStyle = '#475569';
+        ctx.beginPath();
+        ctx.ellipse(this.x + 11, this.y + 11, 8, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#f43f5e';
+        ctx.fillRect(this.x + 4, this.y + 8, 3, 3);
+        ctx.restore();
+      }
+
+      checkCollision(playerObj) {
+        return (
+          playerObj.x < this.x + this.width &&
+          playerObj.x + playerObj.width > this.x &&
+          playerObj.y < this.y + this.height &&
+          playerObj.y + playerObj.height > this.y
+        );
+      }
+    }
+
+    let rices = [];
+    let dujonkus = [];
+    let mosquitoes = [];
+    let selfDestructButtons = [];
+
+    function startDemoPlay() {
+      if (gameActive || isDemoMode) return;
+      isDemoMode = true;
+      score = 0;
+      currentStage = 1;
+      lives = 3;
+      rices = [];
+      dujonkus = [];
+      mosquitoes = [];
+      selfDestructButtons = [];
+      
+      scoreVal.textContent = "0000";
+      stageVal.textContent = "1";
+      worldThemeName.textContent = "(데모)";
+
+      player.reset();
+      overlay.classList.add('opacity-0', 'pointer-events-none');
+      demoBadge.classList.remove('hidden');
+      demoBadge.classList.add('flex');
+
+      initAudio();
+      startBgm();
+
+      if (demoLimitTimer) clearTimeout(demoLimitTimer);
+      demoLimitTimer = setTimeout(() => {
+        stopDemoPlay();
+      }, 30000);
+    }
+
+    function stopDemoPlay() {
+      if (!isDemoMode) return;
+      isDemoMode = false;
+      stopBgm();
+      
+      if (demoLimitTimer) clearTimeout(demoLimitTimer);
+
+      demoBadge.classList.add('hidden');
+      demoBadge.classList.remove('flex');
+      overlay.classList.remove('opacity-0', 'pointer-events-none');
+      
+      overlayTitle.textContent = "RICE JUMP!";
+      startBtn.textContent = "게임 시작!";
+      resetInactivityTimer();
+    }
+
+    function startGame() {
+      if (isDemoMode) stopDemoPlay();
+      if (demoTriggerTimer) clearInterval(demoTriggerTimer);
+
+      gameActive = true;
+      score = 0;
+      currentStage = 1;
+      lives = 3;
+      isInfiniteLives = false;
+      rices = [];
+      dujonkus = [];
+      mosquitoes = [];
+      selfDestructButtons = [];
+      
+      scoreVal.textContent = "0000";
+      stageVal.textContent = "1";
+      worldThemeName.textContent = "(지상)";
+      cheatIndicator.classList.add('hidden');
+      updateLivesDisplay();
+
+      player.reset();
+      overlay.classList.add('opacity-0', 'pointer-events-none');
+      
+      initAudio();
+      startBgm();
+    }
+
+    function gameOver(reason = "normal") {
+      gameActive = false;
+      stopBgm();
+
+      if (reason === "self_destruct") {
+        shakeDuration = 50;
+        Sound.selfDestruct();
+      } else {
+        Sound.hit();
+      }
+
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('rice_jump_high', highScore);
+        highScoreVal.textContent = String(highScore).padStart(4, '0');
+      }
+
+      setTimeout(() => {
+        overlay.classList.remove('opacity-0', 'pointer-events-none');
+        overlayTitle.textContent = "GAME OVER";
+        startBtn.textContent = "다시 도전하기";
+        resetInactivityTimer();
+      }, 450);
+    }
+
+    function updateLivesDisplay() {
+      if (isInfiniteLives) {
+        livesContainer.innerHTML = `<span class="rainbow-text font-game text-xs tracking-widest animate-pulse">♾️ INF</span>`;
+      } else {
+        let heartStr = "";
+        for(let i=0; i<lives; i++) heartStr += "❤️ ";
+        livesContainer.innerHTML = heartStr || "💀";
+      }
+    }
+
+    let frameCount = 0;
+
+    function gameLoop() {
+      requestAnimationFrame(gameLoop);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(0, 340, canvas.width, 60);
+
+      if (gameActive || isDemoMode) {
+        frameCount++;
+
+        if (isDemoMode) {
+          if (Math.random() < 0.03 && player.isGrounded) player.jump();
+          player.vx = 2;
+          player.facing = 'right';
+          if (player.x > canvas.width - 100) player.x = 50;
+        }
+
+        player.update();
+        player.draw();
+
+        if (frameCount % 180 === 0 && selfDestructButtons.length < 2) {
+          selfDestructButtons.push(new HiddenSelfDestructButton());
+        }
+
+        for (let i = selfDestructButtons.length - 1; i >= 0; i--) {
+          const btn = selfDestructButtons[i];
+          btn.update();
+          btn.draw();
+
+          if (btn.checkCollision(player)) {
+            if (!btn.clicked) {
+              btn.clicked = true;
+              if (isDemoMode) stopDemoPlay();
+              else gameOver("self_destruct");
+            }
+          }
+          if (btn.x < -100) selfDestructButtons.splice(i, 1);
+        }
+
+        if (frameCount % 55 === 0) {
+          rices.push({ x: canvas.width + 10, y: 120 + Math.random() * 180, radius: 7 });
+        }
+
+        if (frameCount % 300 === 0) {
+          dujonkus.push({ x: canvas.width + 10, y: 100 + Math.random() * 140, width: 24, height: 24 });
+        }
+
+        if (frameCount % 90 === 0) {
+          mosquitoes.push(new Mosquito());
+        }
+
+        for (let i = rices.length - 1; i >= 0; i--) {
+          const r = rices[i];
+          r.x -= 3.2;
+
+          ctx.fillStyle = '#f8fafc';
+          ctx.beginPath();
+          ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (Math.hypot(player.x + player.width/2 - r.x, player.y + player.height/2 - r.y) < player.width/2 + r.radius) {
+            rices.splice(i, 1);
+            score += 10;
+            scoreVal.textContent = String(score).padStart(4, '0');
+            Sound.eatRice();
+            continue;
+          }
+          if (r.x < -20) rices.splice(i, 1);
+        }
+
+        for (let i = dujonkus.length - 1; i >= 0; i--) {
+          const n = dujonkus[i];
+          n.x -= 2.5;
+
+          ctx.fillStyle = '#d97706';
+          ctx.beginPath();
+          ctx.arc(n.x + 12, n.y + 12, 12, 0, Math.PI*2);
+          ctx.fill();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 8px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('두쫀쿠', n.x + 12, n.y + 15);
+
+          if (player.x < n.x + n.width && player.x + player.width > n.x && player.y < n.y + n.height && player.y + player.height > n.y) {
+            dujonkus.splice(i, 1);
+            Sound.eatDujonku();
+            isInfiniteLives = true;
+            cheatIndicator.classList.remove('hidden');
+            updateLivesDisplay();
+            continue;
+          }
+          if (n.x < -30) dujonkus.splice(i, 1);
+        }
+
+        for (let i = mosquitoes.length - 1; i >= 0; i--) {
+          const m = mosquitoes[i];
+          m.update();
+          m.draw();
+
+          if (m.checkCollision(player)) {
+            if (player.invincibilityFrames === 0) {
+              if (!isInfiniteLives) {
+                lives--;
+                player.invincibilityFrames = 60;
+                Sound.hit();
+                updateLivesDisplay();
+                if (lives <= 0) {
+                  if (isDemoMode) stopDemoPlay();
+                  else gameOver("normal");
+                }
+              }
+            }
+          }
+          if (m.x < -60) mosquitoes.splice(i, 1);
+        }
+      }
+    }
+
+    const keys = {};
+
+    function interruptDemoMode() {
+      if (isDemoMode) stopDemoPlay();
+      else resetInactivityTimer();
+    }
+
+    window.addEventListener('keydown', (e) => {
+      interruptDemoMode();
+      keys[e.key] = true;
+      if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') {
+        if (gameActive) player.jump();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => { keys[e.key] = false; });
+    window.addEventListener('mousedown', interruptDemoMode);
+    window.addEventListener('touchstart', interruptDemoMode, {passive: true});
+
+    setInterval(() => {
+      if (!gameActive || isDemoMode) return;
+      player.vx = 0;
+      if (keys['ArrowLeft'] || keys['a']) {
+        player.vx = -player.speed;
+        player.facing = 'left';
+      }
+      if (keys['ArrowRight'] || keys['d']) {
+        player.vx = player.speed;
+        player.facing = 'right';
+      }
+    }, 1000 / 60);
+
+    document.getElementById('btnLeft').addEventListener('touchstart', (e) => { e.preventDefault(); interruptDemoMode(); keys['ArrowLeft'] = true; });
+    document.getElementById('btnLeft').addEventListener('touchend', () => { keys['ArrowLeft'] = false; });
+    document.getElementById('btnRight').addEventListener('touchstart', (e) => { e.preventDefault(); interruptDemoMode(); keys['ArrowRight'] = true; });
+    document.getElementById('btnRight').addEventListener('touchend', () => { keys['ArrowRight'] = false; });
+    document.getElementById('btnJump').addEventListener('touchstart', (e) => { e.preventDefault(); interruptDemoMode(); if (gameActive) player.jump(); });
+
+    document.getElementById('soundToggle').addEventListener('click', () => {
+      isSoundOn = !isSoundOn;
+      initAudio();
+    });
+
+    document.getElementById('helpBtn').addEventListener('click', () => {
+      document.getElementById('helpModal').classList.remove('hidden');
+    });
+    document.getElementById('closeHelpBtn').addEventListener('click', () => {
+      document.getElementById('helpModal').classList.add('hidden');
+    });
+    document.getElementById('closeHelpBtn2').addEventListener('click', () => {
+      document.getElementById('helpModal').classList.add('hidden');
+    });
+
+    startBtn.addEventListener('click', startGame);
+
+    gameLoop();
+    resetInactivityTimer();
+  </script>
+</body>
+</html>
